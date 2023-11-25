@@ -36,6 +36,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
                 uriArrayList.remove(uriArrayList.get(holder.getAdapterPosition()));
                 notifyItemRemoved(holder.getAdapterPosition());
                 notifyItemRangeChanged(holder.getAdapterPosition(), getItemCount());
+                notifyDataSetChanged();
 
             }
         });

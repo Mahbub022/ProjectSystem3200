@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -23,6 +24,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -68,7 +70,6 @@ public class ImagesForPdf extends AppCompatActivity {
         recyclerView.setLayoutManager(new GridLayoutManager(ImagesForPdf.this,2));
         recyclerView.setAdapter(imageAdapter);
 
-
         selectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -84,6 +85,13 @@ public class ImagesForPdf extends AppCompatActivity {
             }
         });
     }
+//    public void showKeyboard(View view) {
+//        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+//        if (imm != null) {
+//            pdfNameText.requestFocus();
+//            imm.showSoftInput(pdfNameText, InputMethodManager.SHOW_IMPLICIT);
+//        }
+//    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -171,9 +179,9 @@ public class ImagesForPdf extends AppCompatActivity {
             myPdf.close();
 
             Uri pdfUri = Uri.fromFile(pdfFile);
-//            Intent intent = new Intent(ImagesForPdf.this, MainActivity2.class);
-//            intent.putExtra("pdfUri",pdfUri.toString());
-//            startActivity(intent);
+            Intent intent = new Intent(ImagesForPdf.this, PdfViewer.class);
+            intent.putExtra("pdfUri",pdfUri.toString());
+            startActivity(intent);
 
             Toast.makeText(ImagesForPdf.this,"Pdf created successfully",Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
