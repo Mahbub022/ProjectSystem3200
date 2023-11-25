@@ -121,4 +121,8 @@ public class ImageToText extends AppCompatActivity {
             Toast.makeText(ImageToText.this,"Text cleared",Toast.LENGTH_SHORT).show();
         }
     }
+
+    public void BackToMainActivity(View view) {
+        finish();
+    }
 }

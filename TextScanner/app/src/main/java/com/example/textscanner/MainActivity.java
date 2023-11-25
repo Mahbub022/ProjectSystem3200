@@ -31,9 +31,9 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
     }
 
     private void requestPermissions() {
-        String[] permissions = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE,Manifest.permission.READ_EXTERNAL_STORAGE};
+        String[] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE,Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
-        if (EasyPermissions.hasPermissions(this, permissions)) {
+        if (!EasyPermissions.hasPermissions(this, permissions)) {
             // Request permissions
             EasyPermissions.requestPermissions(
                     new PermissionRequest.Builder(this, REQUEST_CODE_PERMISSIONS, permissions)
@@ -62,10 +62,15 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         performTasks();
     }
 
+    private void performOneTasks() {
+        Toast.makeText(this, "Not all permissions granted. Some features may not work.", Toast.LENGTH_SHORT).show();
+    }
+
     @Override
     public void onPermissionsDenied(int requestCode, @NonNull List<String> perms) {
         // Permissions denied
-        showCustomMessage();
+      //  showCustomMessage();
+        performOneTasks();
     }
 
     private void performTasks() {
