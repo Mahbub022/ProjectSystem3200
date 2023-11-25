@@ -54,6 +54,17 @@ public class ImagesForPdf extends AppCompatActivity {
         recyclerView = findViewById(R.id.ImageRecycler);
 
         imageAdapter = new ImageAdapter(uriArrayList);
+
+         //recyclerView custom gridLayout
+//      int spanCount = 2; // or your desired span count
+//      int spacing = 2; // or your desired spacing in pixels
+//      boolean includeEdge = true; // whether to include spacing at the edge of the grid
+//
+//      GridLayoutManager layoutManager = new GridLayoutManager(ImagesForPdf.this, spanCount);
+//      recyclerView.setLayoutManager(layoutManager);
+//      recyclerView.addItemDecoration(new ImagesDecoration(spanCount, spacing, includeEdge));
+//      recyclerView.setAdapter(imageAdapter);
+
         recyclerView.setLayoutManager(new GridLayoutManager(ImagesForPdf.this,2));
         recyclerView.setAdapter(imageAdapter);
 
