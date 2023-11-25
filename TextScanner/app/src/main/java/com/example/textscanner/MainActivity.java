@@ -30,6 +30,9 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         startActivity(new Intent(MainActivity.this,ImageToText.class));
     }
 
+    public void createPdf(View view) {
+        startActivity(new Intent(MainActivity.this,ImagesForPdf.class));
+    }
     private void requestPermissions() {
         String[] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE,Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
@@ -83,4 +86,5 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         // Custom message for permission denial
         Toast.makeText(this, "Permission denied. Some features may not work.", Toast.LENGTH_SHORT).show();
     }
+
 }
