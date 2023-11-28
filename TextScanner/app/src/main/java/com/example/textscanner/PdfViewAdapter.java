@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -44,6 +45,7 @@ public class PdfViewAdapter  extends RecyclerView.Adapter<PdfViewAdapter.PdfView
     public static class PdfViewHolder extends RecyclerView.ViewHolder {
         ImageView pdfImage;
         TextView countImage;
+
 
         public PdfViewHolder(@NonNull View itemView) {
             super(itemView);

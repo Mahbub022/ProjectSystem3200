@@ -19,6 +19,9 @@
         android:theme="@style/Theme.TextScanner"
         tools:targetApi="31">
         <activity
+            android:name=".DocxView"
+            android:exported="false" />
+        <activity
             android:name=".PdfViewer"
             android:exported="false" />
         <activity

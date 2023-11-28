@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.textscanner"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -28,11 +28,13 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+        isCoreLibraryDesugaringEnabled = true
     }
 }
 
 dependencies {
 
+    coreLibraryDesugaring ("com.android.tools:desugar_jdk_libs:1.1.5")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.10.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
@@ -47,7 +49,10 @@ dependencies {
     // To recognize Latin script
     implementation ("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
     // XWPFD documnet  Apache POI Library
-//    implementation ("org.apache.poi:poi:4.1.2")
-//    implementation ("org.apache.poi:poi-ooxml:4.1.2")
-//    implementation ("org.apache.pdfbox:pdfbox-android:2.0.27")
-}
+    implementation("org.apache.poi:poi-ooxml:4.1.2")
+    implementation("javax.xml.stream:stax-api:1.0")
+
+//    implementation ("org.apache.poi:poi:5.1.0")
+//    implementation ("org.apache.poi:poi-ooxml:5.1.0")
+
+ }
