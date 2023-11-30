@@ -8,7 +8,9 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -19,6 +21,7 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -39,11 +42,13 @@ import java.util.Date;
 import java.util.Locale;
 
 public class ImagesForPdf extends AppCompatActivity {
+    String pdfName = "";
     RecyclerView recyclerView;
     Button selectButton;
     EditText pdfNameText;
     ArrayList<Uri> uriArrayList = new ArrayList<>();
     ImageAdapter imageAdapter;
+    private ProgressDialog progressDialog;
 
 
     @Override
@@ -53,19 +58,11 @@ public class ImagesForPdf extends AppCompatActivity {
 
         pdfNameText = findViewById(R.id.pdfNameText);
         selectButton = findViewById(R.id.selectImageButton);
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage("Creating pdf...");
         recyclerView = findViewById(R.id.ImageRecycler);
 
         imageAdapter = new ImageAdapter(uriArrayList);
-
-         //recyclerView custom gridLayout
-//      int spanCount = 2; // or your desired span count
-//      int spacing = 2; // or your desired spacing in pixels
-//      boolean includeEdge = true; // whether to include spacing at the edge of the grid
-//
-//      GridLayoutManager layoutManager = new GridLayoutManager(ImagesForPdf.this, spanCount);
-//      recyclerView.setLayoutManager(layoutManager);
-//      recyclerView.addItemDecoration(new ImagesDecoration(spanCount, spacing, includeEdge));
-//      recyclerView.setAdapter(imageAdapter);
 
         recyclerView.setLayoutManager(new GridLayoutManager(ImagesForPdf.this,2));
         recyclerView.setAdapter(imageAdapter);
@@ -85,13 +82,6 @@ public class ImagesForPdf extends AppCompatActivity {
             }
         });
     }
-//    public void showKeyboard(View view) {
-//        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-//        if (imm != null) {
-//            pdfNameText.requestFocus();
-//            imm.showSoftInput(pdfNameText, InputMethodManager.SHOW_IMPLICIT);
-//        }
-//    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -125,71 +115,82 @@ public class ImagesForPdf extends AppCompatActivity {
     }
 
     public void pdfCreate(View view) {
-        PdfDocument myPdf = new PdfDocument();
-        String fileName = ".pdf";
-        String pdfName = pdfNameText.getText().toString().trim();
-        try {
-            for (int i = 0; i < uriArrayList.size(); i++) {
-                // Convert Uri to Bitmap
-                Bitmap bitmap = getBitmapFromUri(uriArrayList.get(i));
+        if(uriArrayList.isEmpty())
+        {
+            Toast.makeText(ImagesForPdf.this,"No images selected to create pdf",Toast.LENGTH_SHORT).show();
+            return;
+        }
+        progressDialog.show();
 
-                // Calculate desired width and height while maintaining the aspect ratio
-                int originalWidth = bitmap.getWidth();
-                int originalHeight = bitmap.getHeight();
+        CreatePdfTask createPdfTask = new CreatePdfTask();
+        createPdfTask.execute(uriArrayList);
+    }
 
-                int desiredWidth = 400; // Set your desired width for the image in the PDF
-                int desiredHeight = (int) ((float) originalHeight / originalWidth * desiredWidth);
+    @SuppressLint("StaticFieldLeak")
+    private class CreatePdfTask extends AsyncTask<ArrayList<Uri>, Void, String> {
 
-                // Calculate the destination rectangle to maintain aspect ratio
-                RectF destinationRect = calculateDestinationRect(originalWidth, originalHeight, desiredWidth, desiredHeight);
+        @Override
+        protected String doInBackground(ArrayList<Uri>... uriLists) {
+            PdfDocument myPdf = new PdfDocument();
+            String fileName = ".pdf";
+            pdfName = pdfNameText.getText().toString().trim();
 
-                // Create a new page
-                PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(desiredWidth, desiredHeight, i + 1).create();
-                PdfDocument.Page page = myPdf.startPage(pageInfo);
+            try {
+                ArrayList<Uri> uriList = uriLists[0];
 
-                // Draw the Bitmap on the page
-                Canvas canvas = page.getCanvas();
-                canvas.drawBitmap(bitmap, null, destinationRect, new Paint());
+                for (int i = 0; i < uriList.size(); i++) {
+                    Bitmap bitmap = getBitmapFromUri(uriList.get(i));
+                    int originalWidth = bitmap.getWidth();
+                    int originalHeight = bitmap.getHeight();
+                    int desiredWidth = 400;
+                    int desiredHeight = (int) ((float) originalHeight / originalWidth * desiredWidth);
+                    RectF destinationRect = calculateDestinationRect(originalWidth, originalHeight, desiredWidth, desiredHeight);
 
-                // Finish the page
-                myPdf.finishPage(page);
+                    PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(desiredWidth, desiredHeight, i + 1).create();
+                    PdfDocument.Page page = myPdf.startPage(pageInfo);
+                    Canvas canvas = page.getCanvas();
+                    canvas.drawBitmap(bitmap, null, destinationRect, new Paint());
+                    myPdf.finishPage(page);
+                }
+
+                createFolder();
+
+                if (pdfName.isEmpty()) {
+                    Date currentDate = new Date();
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+                    String formattedDateTime = dateFormat.format(currentDate);
+                    String resultString = "TextScanner " + formattedDateTime;
+                    pdfName = resultString + fileName;
+                } else {
+                    pdfName = pdfName + fileName;
+                }
+
+                File pdfFile = new File(Environment.getExternalStorageDirectory(), "/TextScanner/" + pdfName);
+                myPdf.writeTo(new FileOutputStream(pdfFile));
+                myPdf.close();
+
+                return pdfFile.getAbsolutePath();
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
             }
-
-            createFolder();
-
-            // Save the PDF to a file
-            if(pdfName.isEmpty())
-            {
-                Date currentDate = new Date();
-                // Define the date and time format
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
-                // Format the current date and time as a string
-                String formattedDateTime = dateFormat.format(currentDate);
-                // Combine "TextScanner" with the formatted date and time
-                String resultString = "TextScanner " + formattedDateTime;
-                pdfName = resultString + fileName;
-            }
-            else
-            {
-                pdfName = pdfName + fileName;
-            }
-
-            File pdfFile = new File(Environment.getExternalStorageDirectory(),"/TextScanner/"+pdfName);
-            myPdf.writeTo(new FileOutputStream(pdfFile));
-            myPdf.close();
-
-            Uri pdfUri = Uri.fromFile(pdfFile);
-            Intent intent = new Intent(ImagesForPdf.this, PdfViewer.class);
-            intent.putExtra("pdfUri",pdfUri.toString());
-            startActivity(intent);
-
-            Toast.makeText(ImagesForPdf.this,"Pdf created successfully",Toast.LENGTH_SHORT).show();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(ImagesForPdf.this,"Error creating pdf : "+e,Toast.LENGTH_SHORT).show();
         }
 
+        @Override
+        protected void onPostExecute(String result) {
+            progressDialog.dismiss();
+            if (result != null) {
+                Toast.makeText(ImagesForPdf.this, pdfName + " file created successfully", Toast.LENGTH_SHORT).show();
+                Uri pdfUri = Uri.fromFile(new File(result));
+                Intent intent = new Intent(ImagesForPdf.this, PdfViewer.class);
+                intent.putExtra("pdfUri", pdfUri.toString());
+                startActivity(intent);
+            } else {
+                Toast.makeText(ImagesForPdf.this, "Error creating PDF", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
+
 
     private void createFolder() {
 
@@ -197,8 +198,10 @@ public class ImagesForPdf extends AppCompatActivity {
         String pdfFolderPath = "TextScanner";
         File pdfFolder = new File(Environment.getExternalStorageDirectory(), pdfFolderPath);
         if (!pdfFolder.exists()) {
-            if(!pdfFolder.mkdir())
+            if(!pdfFolder.mkdirs())
             {
+                Log.d("Folder", Environment.getExternalStorageDirectory().getAbsolutePath().toString());
+                Toast.makeText(this,Environment.getExternalStorageDirectory().toString(),Toast.LENGTH_LONG).show();
                 Toast.makeText(ImagesForPdf.this, "folder not created", Toast.LENGTH_SHORT).show();
             };
         }
@@ -244,3 +247,23 @@ public class ImagesForPdf extends AppCompatActivity {
         finish();
     }
 }
+
+
+//recyclerView custom gridLayout
+//      int spanCount = 2; // or your desired span count
+//      int spacing = 2; // or your desired spacing in pixels
+//      boolean includeEdge = true; // whether to include spacing at the edge of the grid
+//
+//      GridLayoutManager layoutManager = new GridLayoutManager(ImagesForPdf.this, spanCount);
+//      recyclerView.setLayoutManager(layoutManager);
+//      recyclerView.addItemDecoration(new ImagesDecoration(spanCount, spacing, includeEdge));
+//      recyclerView.setAdapter(imageAdapter);
+
+
+//    public void showKeyboard(View view) {
+//        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+//        if (imm != null) {
+//            pdfNameText.requestFocus();
+//            imm.showSoftInput(pdfNameText, InputMethodManager.SHOW_IMPLICIT);
+//        }
+//    }

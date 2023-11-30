@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
@@ -42,6 +43,7 @@ public class PdfViewer extends AppCompatActivity {
     private RecyclerView recyclerView;
     private PdfViewAdapter pdfViewAdapter;
     private PdfRenderer pdfRenderer;
+    private ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +51,9 @@ public class PdfViewer extends AppCompatActivity {
         setContentView(R.layout.activity_pdf_viewer);
 
         back = findViewById(R.id.backButton);
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage("Loading pdf...");
+
         recyclerView = findViewById(R.id.pdfRecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
 
@@ -85,6 +90,7 @@ public class PdfViewer extends AppCompatActivity {
     }
 
     private void loadPdfPages(Uri pdfUri, List<Bitmap> pdfPages) {
+        progressDialog.show();
         try {
             ParcelFileDescriptor parcelFileDescriptor = getContentResolver().openFileDescriptor(pdfUri, "r");
             PdfRenderer renderer = new PdfRenderer(parcelFileDescriptor);
@@ -118,6 +124,7 @@ public class PdfViewer extends AppCompatActivity {
             Log.e(TAG, "Error loading PDF pages: " + e.getMessage());
             Toast.makeText(this, "Error extracting text", Toast.LENGTH_SHORT).show();
         }
+        progressDialog.dismiss();
     }
 
     private void recognizeText(int num) {

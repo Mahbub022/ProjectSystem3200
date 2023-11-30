@@ -1,5 +1,6 @@
 package com.example.textscanner;
 
+import android.os.AsyncTask;
 import android.os.Environment;
 
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -12,8 +13,26 @@ import java.io.IOException;
 import java.util.List;
 
 public class DocxCreator {
+    public interface DocxCreationListener {
+        void onDocxCreated(boolean success);
+    }
 
-    public static void createDocxFile(String fileName, List<String> textList) {
+    public void createDocxFileAsync(String fileName, List<String> textList, DocxCreationListener listener) {
+        new AsyncTask<Void, Void, Boolean>() {
+            @Override
+            protected Boolean doInBackground(Void... voids) {
+                return createDocxFile(fileName, textList);
+            }
+
+            @Override
+            protected void onPostExecute(Boolean result) {
+                if (listener != null) {
+                    listener.onDocxCreated(result);
+                }
+            }
+        }.execute();
+    }
+    public static boolean createDocxFile(String fileName, List<String> textList) {
         XWPFDocument document = new XWPFDocument();
 
         for (String text : textList) {
@@ -30,8 +49,10 @@ public class DocxCreator {
             FileOutputStream outputStream = new FileOutputStream(docxFile);
             document.write(outputStream);
             outputStream.close();
+            return true;
         } catch (IOException e) {
             e.printStackTrace();
+            return false;
         }
     }
     public static File createDocxFolder() {

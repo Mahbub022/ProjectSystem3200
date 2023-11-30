@@ -1,5 +1,6 @@
 package com.example.textscanner;
 
+import android.app.ProgressDialog;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Environment;
@@ -23,10 +24,11 @@ import java.util.List;
 import java.util.Locale;
 
 public class DocxView extends AppCompatActivity {
+    String docxName="";
     private List<String> textList = new ArrayList<>();
     EditText text;
     RecyclerView recyclerView;
-
+    private ProgressDialog progressDialog;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -34,6 +36,8 @@ public class DocxView extends AppCompatActivity {
 
         text = findViewById(R.id.editTextTitle);
         recyclerView = findViewById(R.id.recyclerDocxView);
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage("Creating Docx file...");
 
         // Retrieve the list of strings from the intent
         textList = getIntent().getStringArrayListExtra("textList");
@@ -49,10 +53,10 @@ public class DocxView extends AppCompatActivity {
         finish();
     }
     public void saveDocx(View view) {
-
-        // Create a file with a unique name (you can use a timestamp or any other unique identifier)
+        progressDialog.show();
+    //Create a file with a unique name (you can use a timestamp or any other unique identifier)
     String fileName = "Docx" + System.currentTimeMillis() + ".docx";
-    String docxName = text.getText().toString().trim();
+    docxName = text.getText().toString().trim();
     if (docxName.isEmpty()) {
         docxName = fileName;
     } else {
@@ -60,7 +64,16 @@ public class DocxView extends AppCompatActivity {
     }
 
     DocxCreator docxCreator = new DocxCreator();
-    docxCreator.createDocxFile(docxName, textList);
-    Toast.makeText(DocxView.this, docxName + " file created successfully", Toast.LENGTH_SHORT).show();
+        docxCreator.createDocxFileAsync(docxName, textList, new DocxCreator.DocxCreationListener() {
+            @Override
+            public void onDocxCreated(boolean success) {
+                progressDialog.dismiss();
+                if (success) {
+                    Toast.makeText(DocxView.this, docxName + " file created successfully", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(DocxView.this, "Failed to create " + docxName + " file", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 }

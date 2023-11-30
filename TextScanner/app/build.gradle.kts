@@ -51,8 +51,6 @@ dependencies {
     // XWPFD documnet  Apache POI Library
     implementation("org.apache.poi:poi-ooxml:4.1.2")
     implementation("javax.xml.stream:stax-api:1.0")
-
-//    implementation ("org.apache.poi:poi:5.1.0")
-//    implementation ("org.apache.poi:poi-ooxml:5.1.0")
-
+    //To recognize bangla script
+    implementation ("cz.adaptech.tesseract4android:tesseract4android:4.6.0")
  }
