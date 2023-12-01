@@ -2,18 +2,18 @@ package com.example.textscanner;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+//import androidx.core.app.ActivityCompat;
+//import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.Manifest;
+//import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ProgressDialog;
-import android.content.Context;
+//import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
+//import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -22,12 +22,13 @@ import android.graphics.RectF;
 import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
+//import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
+//import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -44,12 +45,12 @@ import java.util.Locale;
 public class ImagesForPdf extends AppCompatActivity {
     String pdfName = "";
     RecyclerView recyclerView;
-    Button selectButton;
+    Button selectButton,captureImage;
     EditText pdfNameText;
     ArrayList<Uri> uriArrayList = new ArrayList<>();
     ImageAdapter imageAdapter;
     private ProgressDialog progressDialog;
-
+    private static final int REQUEST_CAMERA_IMAGES = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +59,7 @@ public class ImagesForPdf extends AppCompatActivity {
 
         pdfNameText = findViewById(R.id.pdfNameText);
         selectButton = findViewById(R.id.selectImageButton);
+        captureImage = findViewById(R.id.cameraImage);
         progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Creating pdf...");
         recyclerView = findViewById(R.id.ImageRecycler);
@@ -72,15 +74,27 @@ public class ImagesForPdf extends AppCompatActivity {
             public void onClick(View view) {
                 Intent intent = new Intent();
                 intent.setType("image/*");
-                if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.JELLY_BEAN_MR2)
-                {
-                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
-                }
+//                if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.JELLY_BEAN_MR2)
+//                {
+//                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
+//                }
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
                 intent.setAction(Intent.ACTION_GET_CONTENT);
                 startActivityForResult(Intent.createChooser(intent,"Select Pictures"),1);
 
             }
         });
+    }
+
+    public void ImageFromCamera(View view) {
+        Intent takePictureIntent = new Intent();
+        takePictureIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
+        takePictureIntent.setAction(MediaStore.ACTION_IMAGE_CAPTURE);
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(takePictureIntent, REQUEST_CAMERA_IMAGES);
+        } else {
+            Toast.makeText(ImagesForPdf.this, "No camera app available", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -111,7 +125,39 @@ public class ImagesForPdf extends AppCompatActivity {
                 imageAdapter.notifyDataSetChanged();
 
             }
+        } else if (requestCode == REQUEST_CAMERA_IMAGES && resultCode == Activity.RESULT_OK && null != data) {
+            Bundle extras = data.getExtras();
+            if (extras != null) {
+                ArrayList<Uri> cameraImageUris = saveCameraImages(extras);
+                uriArrayList.addAll(cameraImageUris);
+                imageAdapter.notifyDataSetChanged();
+            }
         }
+    }
+
+    private ArrayList<Uri> saveCameraImages(Bundle extras) {
+        ArrayList<Uri> cameraImageUris = new ArrayList<>();
+        for (int i = 0; i <1; i++) {
+            Bitmap imageBitmap = (Bitmap) extras.get("data");
+            File imageFile = createImageFile();
+            try {
+                FileOutputStream out = new FileOutputStream(imageFile);
+                imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
+                out.flush();
+                out.close();
+                cameraImageUris.add(Uri.fromFile(imageFile));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return cameraImageUris;
+    }
+
+    private File createImageFile() {
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        return new File(storageDir, imageFileName + ".jpg");
     }
 
     public void pdfCreate(View view) {
