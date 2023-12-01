@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
     }
     private void requestPermissions() {
         String[] permissions = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE,Manifest.permission.WRITE_EXTERNAL_STORAGE};
+//        String[] permissions = {Manifest.permission.CAMERA,Manifest.permission.MANAGE_EXTERNAL_STORAGE};
 
         if (!EasyPermissions.hasPermissions(this, permissions)) {
             // Request permissions
@@ -80,11 +81,6 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         // Tasks to perform after getting all permissions
         Toast.makeText(this, "All permissions granted. Performing tasks...", Toast.LENGTH_SHORT).show();
         // Add your tasks here
-    }
-
-    private void showCustomMessage() {
-        // Custom message for permission denial
-        Toast.makeText(this, "Permission denied. Some features may not work.", Toast.LENGTH_SHORT).show();
     }
 
 }
