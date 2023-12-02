@@ -4,11 +4,13 @@ import android.Manifest;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.webkit.MimeTypeMap;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -25,13 +27,16 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity implements EasyPermissions.PermissionCallbacks {
 
     private static final int REQUEST_CODE_PERMISSIONS = 123;
+    private static final int PICK_PDF_REQUEST = 1;
     RecyclerView recycler;
     ArrayList<String> pdfFiles = new ArrayList<>();
+    Button pdfPicker;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        pdfPicker = findViewById(R.id.pdfPickerButton);
         recycler = findViewById(R.id.pdfFileRecycler);
 
         // Check and request permissions on activity creation
@@ -40,6 +45,26 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         recycler.setAdapter(new pdfFilesAdapter(this,pdfFiles()));
     }
 
+    public void pdfPicker(View view) {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("application/pdf"); // Set the MIME type to PDF
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(Intent.createChooser(intent, "Select a PDF file"), PICK_PDF_REQUEST);
+    }
+
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == PICK_PDF_REQUEST && resultCode == RESULT_OK) {
+            if (data != null) {
+                // Get the selected PDF file's URI
+                Uri pdfUri = data.getData();
+                Intent pdfViewerIntent = new Intent(this, PdfViewer.class);
+                pdfViewerIntent.putExtra("pdfUri", pdfUri.toString());
+                startActivity(pdfViewerIntent);
+            }
+        }
+    }
     public ArrayList<String> pdfFiles()
     {
         try{
@@ -122,10 +147,4 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         Toast.makeText(this, "All permissions granted. Performing tasks...", Toast.LENGTH_SHORT).show();
         // Add your tasks here
     }
-
-
-//    public void pdfFiles(View view) {
-//        recycler.setLayoutManager(new LinearLayoutManager(this));
-//        recycler.setAdapter(new pdfFilesAdapter(this,pdfFiles()));
-//    }
 }
