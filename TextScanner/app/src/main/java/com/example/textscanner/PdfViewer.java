@@ -10,13 +10,13 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnFailureListener;
@@ -35,8 +35,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PdfViewer extends AppCompatActivity {
+
+    int expected, current;
     private static final String TAG = "PdfView";
-    private Button back;
+    private Button docButton;
     Uri imageUri;
     TextRecognizer textRecognizer;
     private List<String> textList = new ArrayList<>();
@@ -50,7 +52,9 @@ public class PdfViewer extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pdf_viewer);
 
-        back = findViewById(R.id.backButton);
+        docButton = findViewById(R.id.docCreateButton);
+//        docButton.setEnabled(false);
+
         progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Loading pdf...");
 
@@ -67,17 +71,37 @@ public class PdfViewer extends AppCompatActivity {
         // Log the PDF URI for debugging
         Log.d(TAG, "PDF URI: " + pdfUriString);
 
-        // Parse the URI and open the PdfRenderer
-        openPdfRenderer(pdfUri);
-
-        // Load all PDF pages
-        loadPdfPages(pdfUri, pdfPages);
-
-        // Create and set the adapter
-        pdfViewAdapter = new PdfViewAdapter(pdfPages);
-        recyclerView.setAdapter(pdfViewAdapter);
+        new PdfProcessingTask().execute(pdfUri);
     }
 
+    private class PdfProcessingTask extends AsyncTask<Uri, Void, List<Bitmap>>{
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            progressDialog.show();
+        }
+        @Override
+        protected List<Bitmap> doInBackground(Uri... uris) {
+            Uri pdfUri = uris[0];
+            List<Bitmap> pdfPages = new ArrayList<>();
+
+            try {
+                openPdfRenderer(pdfUri);
+                loadPdfPages(pdfUri, pdfPages);
+            } catch (Exception e) {
+                Log.e(TAG, "Error in background task: " + e.getMessage());
+            }
+            return pdfPages;
+        }
+        @Override
+        protected void onPostExecute(List<Bitmap> pdfPages) {
+            super.onPostExecute(pdfPages);
+
+            // Create and set the adapter after PDF processing is complete
+            pdfViewAdapter = new PdfViewAdapter(pdfPages);
+            recyclerView.setAdapter(pdfViewAdapter);
+        }
+    }
     private void openPdfRenderer(Uri pdfUri) {
         try {
             // Open the PdfRenderer
@@ -95,7 +119,9 @@ public class PdfViewer extends AppCompatActivity {
             ParcelFileDescriptor parcelFileDescriptor = getContentResolver().openFileDescriptor(pdfUri, "r");
             PdfRenderer renderer = new PdfRenderer(parcelFileDescriptor);
 
-            for (int i = 0; i < renderer.getPageCount(); i++) {
+            int pageCount = renderer.getPageCount();
+            expected = pageCount-1;
+            for (int i = 0; i < pageCount; i++) {
                 PdfRenderer.Page page = renderer.openPage(i);
                 Bitmap bitmap = Bitmap.createBitmap(page.getWidth(), page.getHeight(), Bitmap.Config.ARGB_8888);
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
@@ -108,18 +134,13 @@ public class PdfViewer extends AppCompatActivity {
 
                 // Create a Uri from the file
                 imageUri = Uri.fromFile(file);
-                recognizeText(i);
+                current = i;
+                recognizeText(i, pageCount);
 
             }
             renderer.close();
-//            String data = "";
-//            for(int i=0 ; i<textList.size() ; i++)
-//            {
-//                data= data + textList.get(i);
-//            }
-//            text.setText(String.valueOf(textList.size()));
-//            text.setText(data);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             e.printStackTrace();
             Log.e(TAG, "Error loading PDF pages: " + e.getMessage());
             Toast.makeText(this, "Error extracting text", Toast.LENGTH_SHORT).show();
@@ -127,7 +148,7 @@ public class PdfViewer extends AppCompatActivity {
         progressDialog.dismiss();
     }
 
-    private void recognizeText(int num) {
+    private void recognizeText(int num, int pageCount) {
         if (imageUri != null) {
             try {
                 InputImage inputImage = InputImage.fromFilePath(PdfViewer.this, imageUri);
@@ -138,11 +159,19 @@ public class PdfViewer extends AppCompatActivity {
                                 String recognizeText = text.getText();
                                 textList.add(recognizeText);
                                 Toast.makeText(PdfViewer.this, "Text selected "+num+" : "+textList.size(), Toast.LENGTH_SHORT).show();
+                                if (num == pageCount - 1) {
+                                    progressDialog.dismiss();
+//                                    docButton.setEnabled(true);
+                                }
                             }
                         }).addOnFailureListener(new OnFailureListener() {
                             @Override
                             public void onFailure(@NonNull Exception e) {
                                 Toast.makeText(PdfViewer.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+                                if (num == pageCount - 1) {
+                                    progressDialog.dismiss();
+//                                    docButton.setEnabled(true);
+                                }
                             }
                         });
             } catch (IOException e) {
@@ -192,8 +221,35 @@ public class PdfViewer extends AppCompatActivity {
     }
 
     public void createDocFile(View view) {
+        if(expected != current)
+        {
+            Toast.makeText(this,"Wait please, the images are being processed",Toast.LENGTH_SHORT).show();
+            return;
+        }
         Intent intent = new Intent(PdfViewer.this, DocxView.class);
         intent.putStringArrayListExtra("textList", (ArrayList<String>) textList);
         startActivity(intent);
     }
 }
+
+
+//extras
+
+
+// Parse the URI and open the PdfRenderer
+//        openPdfRenderer(pdfUri);
+//
+//        // Load all PDF pages
+//        loadPdfPages(pdfUri, pdfPages);
+
+// Create and set the adapter
+//        pdfViewAdapter = new PdfViewAdapter(pdfPages);
+//        recyclerView.setAdapter(pdfViewAdapter);
+
+//            String data = "";
+//            for(int i=0 ; i<textList.size() ; i++)
+//            {
+//                data= data + textList.get(i);
+//            }
+//            text.setText(String.valueOf(textList.size()));
+//            text.setText(data);
