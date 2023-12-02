@@ -96,6 +96,7 @@ public class ImageToText extends AppCompatActivity {
             {
                 try {
                     copyTessDataToSDCard(this);// Copy Tesseract data if permission granted
+                    progressDialog.show();
                     // Open an input stream from the selected image URI
                     InputStream inputStream = getContentResolver().openInputStream(imageUri);
 
@@ -110,8 +111,10 @@ public class ImageToText extends AppCompatActivity {
                         } else {
                             extractedText.setText("Text not found.");
                         }
+                        progressDialog.dismiss();
                     }
                     else{
+                        progressDialog.dismiss();
                         Toast.makeText(this,"Data not found", Toast.LENGTH_SHORT).show();
                     }
                 } catch (IOException e) {

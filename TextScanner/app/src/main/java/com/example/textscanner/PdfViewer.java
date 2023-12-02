@@ -6,8 +6,11 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -31,29 +34,36 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PdfViewer extends AppCompatActivity {
 
-    int expected, current;
     private static final String TAG = "PdfView";
-    private Button docButton;
+    private Button docButton,bn,en;
     Uri imageUri;
+    ArrayList<Uri> imageUris = new ArrayList<>();
     TextRecognizer textRecognizer;
     private List<String> textList = new ArrayList<>();
     private RecyclerView recyclerView;
     private PdfViewAdapter pdfViewAdapter;
     private PdfRenderer pdfRenderer;
     private ProgressDialog progressDialog;
-
+    BanglaTextExtractor banglaTextExtractor = new BanglaTextExtractor();
+    int flag = 0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pdf_viewer);
 
         docButton = findViewById(R.id.docCreateButton);
-//        docButton.setEnabled(false);
+        bn = findViewById(R.id.buttonBn2);
+        en = findViewById(R.id.buttonEn2);
+        en.setBackgroundColor(Color.rgb(0,150,136));
+
+
 
         progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("Loading pdf...");
@@ -120,7 +130,6 @@ public class PdfViewer extends AppCompatActivity {
             PdfRenderer renderer = new PdfRenderer(parcelFileDescriptor);
 
             int pageCount = renderer.getPageCount();
-            expected = pageCount-1;
             for (int i = 0; i < pageCount; i++) {
                 PdfRenderer.Page page = renderer.openPage(i);
                 Bitmap bitmap = Bitmap.createBitmap(page.getWidth(), page.getHeight(), Bitmap.Config.ARGB_8888);
@@ -134,9 +143,7 @@ public class PdfViewer extends AppCompatActivity {
 
                 // Create a Uri from the file
                 imageUri = Uri.fromFile(file);
-                current = i;
-                recognizeText(i, pageCount);
-
+                imageUris.add(imageUri);
             }
             renderer.close();
         }
@@ -147,40 +154,7 @@ public class PdfViewer extends AppCompatActivity {
         }
         progressDialog.dismiss();
     }
-
-    private void recognizeText(int num, int pageCount) {
-        if (imageUri != null) {
-            try {
-                InputImage inputImage = InputImage.fromFilePath(PdfViewer.this, imageUri);
-                Task<Text> result = textRecognizer.process(inputImage)
-                        .addOnSuccessListener(new OnSuccessListener<Text>() {
-                            @Override
-                            public void onSuccess(Text text) {
-                                String recognizeText = text.getText();
-                                textList.add(recognizeText);
-                                Toast.makeText(PdfViewer.this, "Text selected "+num+" : "+textList.size(), Toast.LENGTH_SHORT).show();
-                                if (num == pageCount - 1) {
-                                    progressDialog.dismiss();
-//                                    docButton.setEnabled(true);
-                                }
-                            }
-                        }).addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                Toast.makeText(PdfViewer.this, e.getMessage(), Toast.LENGTH_SHORT).show();
-                                if (num == pageCount - 1) {
-                                    progressDialog.dismiss();
-//                                    docButton.setEnabled(true);
-                                }
-                            }
-                        });
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-        private File saveBitmapToFile(Bitmap bitmap) {
+    private File saveBitmapToFile(Bitmap bitmap) {
             // Get the directory where you want to save the file
             File directory = new File(Environment.getExternalStorageDirectory(), "TextScanner");
             File newDirectory = new File(directory,"Temporary");
@@ -206,7 +180,6 @@ public class PdfViewer extends AppCompatActivity {
                 return null;
             }
         }
-
     @Override
     protected void onDestroy() {
         // Close the PdfRenderer and associated resources when the activity is destroyed
@@ -220,18 +193,187 @@ public class PdfViewer extends AppCompatActivity {
         finish();
     }
 
-    public void createDocFile(View view) {
-        if(expected != current)
-        {
-            Toast.makeText(this,"Wait please, the images are being processed",Toast.LENGTH_SHORT).show();
-            return;
+    private void recognizeText() {
+        progressDialog.show();
+
+        int totalImages = imageUris.size();
+        AtomicInteger imagesProcessed = new AtomicInteger(0);
+
+        for (int i = 0; i < totalImages; i++) {
+            if (imageUris.get(i) != null) {
+                try {
+                    InputImage inputImage = InputImage.fromFilePath(PdfViewer.this, imageUris.get(i));
+                    Task<Text> result = textRecognizer.process(inputImage)
+                            .addOnCompleteListener(task -> {
+                                if (task.isSuccessful()) {
+                                    Text text = task.getResult();
+                                    if (text != null) {
+                                        String recognizeText = text.getText();
+                                        textList.add(recognizeText);
+                                        Toast.makeText(PdfViewer.this, "Text selected: " + textList.size(), Toast.LENGTH_SHORT).show();
+                                    }
+                                } else {
+                                    Exception e = task.getException();
+                                    Toast.makeText(PdfViewer.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+
+                                // Check if all images are processed
+                                if (imagesProcessed.incrementAndGet() == totalImages) {
+                                    progressDialog.dismiss();
+                                    launchDocxViewActivity();
+                                }
+                            });
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
+    }
+
+    private void launchDocxViewActivity() {
         Intent intent = new Intent(PdfViewer.this, DocxView.class);
         intent.putStringArrayListExtra("textList", (ArrayList<String>) textList);
         startActivity(intent);
     }
-}
 
+    public void createDocFile(View view) {
+        if(flag == 0)
+        {
+            recognizeText();
+        }
+        else {
+            copyTessDataToSDCard(this);
+            new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected void onPreExecute() {
+                    super.onPreExecute();
+                    progressDialog.show();
+                }
+                @Override
+                protected Void doInBackground(Void... voids) {
+                    for (int i = 0; i < imageUris.size(); i++) {
+                        try {
+                            InputStream inputStream = getContentResolver().openInputStream(imageUris.get(i));
+                            Bitmap photo = BitmapFactory.decodeStream(inputStream);
+
+                            if (photo != null) {
+                                String text = banglaTextExtractor.extractText(PdfViewer.this, photo);
+                                if (text != null && !text.isEmpty()) {
+                                    textList.add(text);
+                                } else {
+                                    Toast.makeText(PdfViewer.this, "Text not found", Toast.LENGTH_SHORT).show();
+                                }
+                            } else {
+                                Toast.makeText(PdfViewer.this, "Data not found", Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            Toast.makeText(PdfViewer.this, "Error : " + e, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Void aVoid) {
+                    progressDialog.dismiss();
+                     launchDocxViewActivity();
+                }
+            }.execute();
+        }
+    }
+
+    public static void copyTessDataToSDCard(Context context){
+        try {
+            String dataPath = Environment.getExternalStorageDirectory() + "/tesseract/";
+            File dir = new File(dataPath);
+            if (!dir.exists()) {
+                if (!dir.mkdirs()) {
+                    Log.e("TAG", "Error creating directory " + dataPath);
+                    Toast.makeText(context,"Error creating directory",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+
+            String trainedDataPath = dataPath + "tessdata/";
+            File trainedDataDir = new File(trainedDataPath);
+            if (!trainedDataDir.exists()) {
+                if (!trainedDataDir.mkdirs()) {
+                    Log.e("TAG", "Error creating directory " + trainedDataPath);
+                    return;
+                }
+            }
+
+            String trainedDataName = "ben.traineddata"; // Use "ben" for Bengali
+            File trainedDataFile = new File(trainedDataPath + trainedDataName);
+            if (!trainedDataFile.exists()) {
+                try {
+                    InputStream in = context.getAssets().open("tessdata/" + trainedDataName);
+                    FileOutputStream out = new FileOutputStream(trainedDataFile);
+
+                    byte[] buffer = new byte[1024];
+                    int read;
+                    while ((read = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, read);
+                    }
+
+                    in.close();
+                    out.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Toast.makeText(context,"Text : "+e,Toast.LENGTH_SHORT).show();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(context,"Base : "+e,Toast.LENGTH_SHORT).show();
+        }
+    }
+    public void EnglishText2(View view) {
+        flag = 0;
+        en.setBackgroundColor(Color.rgb(0,150,136));
+        bn.setBackgroundColor(Color.rgb(255,255,255));
+    }
+
+    public void BanglaText2(View view) {
+        flag = 1;
+        bn.setBackgroundColor(Color.rgb(0,150,136));
+        en.setBackgroundColor(Color.rgb(255,255,255));
+    }
+
+}
+//    private void recognizeText() {
+//
+//        int i = 0;
+//        for( ;i<imageUris.size();i++){
+//        if (imageUris.get(i) != null) {
+//            try {
+//                InputImage inputImage = InputImage.fromFilePath(PdfViewer.this, imageUris.get(i));
+//                Task<Text> result = textRecognizer.process(inputImage)
+//                        .addOnSuccessListener(new OnSuccessListener<Text>() {
+//                            @Override
+//                            public void onSuccess(Text text) {
+//                                String recognizeText = text.getText();
+//                                textList.add(recognizeText);
+//                                Toast.makeText(PdfViewer.this, "Text selected : "+textList.size(), Toast.LENGTH_SHORT).show();
+//                            }
+//                        }).addOnFailureListener(new OnFailureListener() {
+//                            @Override
+//                            public void onFailure(@NonNull Exception e) {
+//                                Toast.makeText(PdfViewer.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+//                            }
+//                        });
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//                }
+//            }
+//        }
+//        progressDialog.dismiss();
+//        Intent intent = new Intent(PdfViewer.this, DocxView.class);
+//        intent.putStringArrayListExtra("textList", (ArrayList<String>) textList);
+//        startActivity(intent);
+//
+//    }
 
 //extras
 

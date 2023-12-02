@@ -1,27 +1,17 @@
 package com.example.textscanner;
 
 import android.app.ProgressDialog;
-import android.graphics.Bitmap;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.View;
 import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 public class DocxView extends AppCompatActivity {
     String docxName="";
